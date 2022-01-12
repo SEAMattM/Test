@@ -1,0 +1,2092 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "External Discounts API",
+    "description": "Interface for external systems to define selectable discounts",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.appetize.com"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Account",
+      "description": "Retrieve information about the user or account.  Appetize will consume these APIs from you."
+    },
+    {
+      "name": "Health Checks",
+      "description": "Optional methods and expected responses for external system development, which may assist in troubleshooting.  Appetize will consume these APIs from you."
+    }
+  ],
+  "paths": {
+    "/inquiry": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Retrieve available discounts/promotions from an external system",
+        "description": "Retrieves applicable discounts/promotions without an account lock",
+        "parameters": [
+          {
+            "name": "x-request-venue-id",
+            "in": "header",
+            "description": "Venue ID for a given venue",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "x-request-vendor-id",
+            "in": "header",
+            "description": "Vendor ID for a given vendor",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Reserved for future use.  Langauge(s) accepted by the caller.",
+            "required": true,
+            "deprecated": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "en-US"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/inquiryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/inquiryResponse"
+                },
+                "examples": {
+                  "Single Discount": {
+                    "$ref": "#/components/examples/inquiryResponse_single"
+                  },
+                  "Multiple Discounts": {
+                    "$ref": "#/components/examples/inquiryResponse_multiple"
+                  },
+                  "Valid Media, No Discounts": {
+                    "$ref": "#/components/examples/inquiryResponse_empty"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/BadRequest"
+                },
+                "examples": {
+                  "Invalid Request Body": {
+                    "$ref": "#/components/examples/InvalidRequestBody"
+                  },
+                  "Undefined Error": {
+                    "$ref": "#/components/examples/UndefinedError"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not logged in or otherwise has not supplied valid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "example": {
+                  "message": "unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A desired resource was not found",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Account Not Found": {
+                    "$ref": "#/components/examples/authorizeResponse_NotFound"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Account Locked": {
+                    "$ref": "#/components/examples/authorizeResponse_Locked"
+                  },
+                  "Pass Expired/Revoked": {
+                    "$ref": "#/components/examples/authorizeResponse_Expired"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/authorize": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Retrieve available discounts and promotions from an external system and request the external system to lock the account",
+        "description": "Authorizes an account to be used by the selling system and retrieves applicable discounts for the guest.",
+        "parameters": [
+          {
+            "name": "x-request-venue-id",
+            "in": "header",
+            "description": "Venue ID for a given venue",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "x-request-vendor-id",
+            "in": "header",
+            "description": "Vendor ID for a given vendor",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Reserved for future use.  Langauge(s) accepted by the caller.",
+            "required": true,
+            "deprecated": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "en-US"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/authorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/authorizeResponse"
+                },
+                "examples": {
+                  "No Cashier Prompting": {
+                    "$ref": "#/components/examples/authorizeResponse_NoPrompts"
+                  },
+                  "No Uses; Information Only": {
+                    "$ref": "#/components/examples/authorizeResponse_NoUses"
+                  },
+                  "One-Time Use Coupon": {
+                    "$ref": "#/components/examples/authorizeResponse_OneTimeUse"
+                  },
+                  "Multiple Discounts": {
+                    "$ref": "#/components/examples/authorizeResponse_Approved"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/BadRequest"
+                },
+                "examples": {
+                  "Invalid Request Body": {
+                    "$ref": "#/components/examples/InvalidRequestBody"
+                  },
+                  "Undefined Error": {
+                    "$ref": "#/components/examples/UndefinedError"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not logged in or otherwise has not supplied valid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "example": {
+                  "message": "unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A desired resource was not found",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Account Not Found": {
+                    "$ref": "#/components/examples/authorizeResponse_NotFound"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Account Locked": {
+                    "$ref": "#/components/examples/authorizeResponse_Locked"
+                  },
+                  "Pass Expired/Revoked": {
+                    "$ref": "#/components/examples/authorizeResponse_Expired"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/void": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Voids a previous authorization which has not yet been finalized",
+        "description": "Voids a previous authorization which has not yet been finalized; Non-Success messages are presented to the selling system but are non-fatal; the selling system may remove the media (and associated entitlements) and continue to sell",
+        "parameters": [
+          {
+            "name": "x-request-venue-id",
+            "in": "header",
+            "description": "Venue ID for a given venue",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "x-request-vendor-id",
+            "in": "header",
+            "description": "Vendor ID for a given vendor",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/voidRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/BadRequest"
+                },
+                "examples": {
+                  "Invalid Request Body": {
+                    "$ref": "#/components/examples/InvalidRequestBody"
+                  },
+                  "Undefined Error": {
+                    "$ref": "#/components/examples/UndefinedError"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not logged in or otherwise has not supplied valid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "example": {
+                  "message": "unauthorized"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/finalize": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Notify the external system the order has completed and actions taken by the selling system",
+        "description": "Notifies the external system of any discounts applied in the transaction and on the specific items(s) or order-level",
+        "parameters": [
+          {
+            "name": "x-request-venue-id",
+            "in": "header",
+            "description": "Venue ID for a given venue",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "x-request-vendor-id",
+            "in": "header",
+            "description": "Vendor ID for a given vendor",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Reserved for future use.  Langauge(s) accepted by the caller.",
+            "required": true,
+            "deprecated": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "en-US"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/finalizeRequest"
+              },
+              "examples": {
+                "Finalize Request": {
+                  "$ref": "#/components/examples/finalizeRequest"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/BadRequest"
+                },
+                "examples": {
+                  "Invalid Request Body": {
+                    "$ref": "#/components/examples/InvalidRequestBody"
+                  },
+                  "Undefined Error": {
+                    "$ref": "#/components/examples/UndefinedError"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not logged in or otherwise has not supplied valid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "example": {
+                  "message": "unauthorized"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancel": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Cancels a previously finalized order",
+        "description": "Cancels a previously finalized order; Non-Success messages are presented to the selling system but are non-fatal; the selling system will continue with the return action",
+        "parameters": [
+          {
+            "name": "x-request-venue-id",
+            "in": "header",
+            "description": "Venue ID for a given venue",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "x-request-vendor-id",
+            "in": "header",
+            "description": "Vendor ID for a given vendor",
+            "required": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "description": "Reserved for future use.  Langauge(s) accepted by the caller.",
+            "required": true,
+            "deprecated": true,
+            "style": "simple",
+            "explode": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "en-US"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/cancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/BadRequest"
+                },
+                "examples": {
+                  "Invalid Request Body": {
+                    "$ref": "#/components/examples/InvalidRequestBody"
+                  },
+                  "Undefined Error": {
+                    "$ref": "#/components/examples/UndefinedError"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "User is not logged in or otherwise has not supplied valid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "example": {
+                  "message": "unauthorized"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health Checks"
+        ],
+        "summary": "Verifies the system is operational",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": [
+          "Health Checks"
+        ],
+        "summary": "Retrieves version information about the endpoint",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "2021-01-05"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+            "headers": {
+              "Content-Language": {
+                "$ref": "#/components/headers/Content-Language"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/failureResponse"
+                },
+                "examples": {
+                  "Internal Error": {
+                    "value": {
+                      "message": "An internal server error has occurred"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not Implemented"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "authorizeRequest": {
+        "required": [
+          "employee",
+          "local_order_uuid",
+          "location",
+          "media",
+          "media_input_method"
+        ],
+        "type": "object",
+        "properties": {
+          "media": {
+            "$ref": "#/components/schemas/media"
+          },
+          "media_input_method": {
+            "$ref": "#/components/schemas/media_input_method"
+          },
+          "location": {
+            "$ref": "#/components/schemas/location"
+          },
+          "employee": {
+            "$ref": "#/components/schemas/employee"
+          },
+          "local_order_uuid": {
+            "$ref": "#/components/schemas/local_order_uuid"
+          }
+        }
+      },
+      "authorizeResponse": {
+        "type": "object",
+        "properties": {
+          "display_media": {
+            "$ref": "#/components/schemas/display_media"
+          },
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/reduction"
+            }
+          },
+          "reference_tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/reduction_reference_tag"
+            }
+          }
+        }
+      },
+      "cancelRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/item_return"
+            }
+          },
+          "location": {
+            "$ref": "#/components/schemas/location"
+          },
+          "employee": {
+            "$ref": "#/components/schemas/employee"
+          },
+          "local_order_uuid": {
+            "$ref": "#/components/schemas/local_order_uuid"
+          }
+        }
+      },
+      "getDiscountsResponse": {
+        "type": "object",
+        "properties": {
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/getDiscountsResponse_discounts"
+            }
+          }
+        }
+      },
+      "finalizeRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/item_sale"
+            }
+          },
+          "location": {
+            "$ref": "#/components/schemas/location"
+          },
+          "employee": {
+            "$ref": "#/components/schemas/employee"
+          },
+          "local_order_uuid": {
+            "$ref": "#/components/schemas/local_order_uuid"
+          }
+        }
+      },
+      "inquiryRequest": {
+        "required": [
+          "employee",
+          "location",
+          "media",
+          "media_input_method"
+        ],
+        "type": "object",
+        "properties": {
+          "media": {
+            "$ref": "#/components/schemas/media"
+          },
+          "media_input_method": {
+            "$ref": "#/components/schemas/media_input_method"
+          },
+          "location": {
+            "$ref": "#/components/schemas/location"
+          },
+          "employee": {
+            "$ref": "#/components/schemas/employee"
+          }
+        }
+      },
+      "inquiryResponse": {
+        "type": "object",
+        "properties": {
+          "display_media": {
+            "$ref": "#/components/schemas/display_media"
+          },
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/inquiryResponse_discounts"
+            }
+          }
+        }
+      },
+      "voidRequest": {
+        "type": "object",
+        "properties": {
+          "media": {
+            "$ref": "#/components/schemas/media"
+          },
+          "media_input_method": {
+            "$ref": "#/components/schemas/media_input_method"
+          },
+          "location": {
+            "$ref": "#/components/schemas/location"
+          },
+          "employee": {
+            "$ref": "#/components/schemas/employee"
+          },
+          "local_order_uuid": {
+            "$ref": "#/components/schemas/local_order_uuid"
+          }
+        }
+      },
+      "voidResponse": {
+        "type": "object",
+        "properties": {
+          "foo": {
+            "type": "string",
+            "example": "bar"
+          }
+        }
+      },
+      "failureResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "A human-readable response, used for both successful and failed requests."
+          }
+        }
+      },
+      "custom_field": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Connect-configured Custom Field key",
+            "example": "Buyer"
+          },
+          "name": {
+            "type": "string",
+            "description": "Connect-configured Custom Field name",
+            "example": "Merchandise Buyer"
+          },
+          "value": {
+            "type": "string",
+            "example": "Sally M."
+          }
+        },
+        "description": "Connect-configured custom field"
+      },
+      "discount_application": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Currency amount of the discount applied multiplied by the quantity",
+            "format": "float",
+            "example": -1.1
+          },
+          "base_price": {
+            "type": "number",
+            "format": "float",
+            "example": 11.15
+          },
+          "index": {
+            "type": "integer",
+            "description": "Order of the discount applied",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Connect-configured discount name",
+            "example": "Gold Tier 10%"
+          },
+          "id": {
+            "$ref": "#/components/schemas/reduction_id"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Connect-configured reference ID for the discount",
+            "example": "SomeUniqueValue"
+          },
+          "media": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of discount applied",
+            "example": "PERCENT",
+            "enum": [
+              "FLAT",
+              "PERCENT"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "description": "Value of the percent or flat amount to be discounted",
+            "format": "float",
+            "example": 0.1
+          }
+        }
+      },
+      "display_media": {
+        "maxLength": 255,
+        "minLength": 0,
+        "type": "string",
+        "description": "An optional visual override of the media ID element, used only for display purposes."
+      },
+      "employee": {
+        "type": "object",
+        "properties": {
+          "login": {
+            "type": "string",
+            "description": "Connect-configured Employee->Employee Login (previously Employee PIN)",
+            "format": "number",
+            "example": "045958"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "Employee->External ID",
+            "example": "SAP4945883"
+          }
+        }
+      },
+      "item_sale": {
+        "type": "object",
+        "properties": {
+          "identifiers": {
+            "$ref": "#/components/schemas/item_sale_identifiers"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Relative position of the item in the cart, used in other references",
+            "example": 3
+          },
+          "line_item_uuid": {
+            "type": "string",
+            "description": "Appetize-generated identifier for this item cart sale",
+            "format": "uuid",
+            "example": "ae76b6c4-6c35-42a5-93f9-ea6d60c642de"
+          },
+          "parent_item_uuid": {
+            "type": "string",
+            "description": "Appetize-Assigned unique identifier link to another item in this cart within this transaction, used with modifiers",
+            "format": "uuid",
+            "example": "f7c12fe4-c69a-4b78-8962-b8439ad91af1"
+          },
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/discount_application"
+            }
+          },
+          "measure": {
+            "$ref": "#/components/schemas/item_sale_measure"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/item_sale_prices"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity of the item sold",
+            "format": "float",
+            "example": 2
+          }
+        }
+      },
+      "item_return": {
+        "type": "object",
+        "properties": {
+          "identifiers": {
+            "$ref": "#/components/schemas/item_sale_identifiers"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Relative position of the item in the cart, used in other references",
+            "example": 3
+          },
+          "line_item_uuid": {
+            "type": "string",
+            "description": "Appetize-generated identifier for this item cart sale",
+            "format": "uuid",
+            "example": "ae76b6c4-6c35-42a5-93f9-ea6d60c642de"
+          },
+          "link": {
+            "$ref": "#/components/schemas/item_return_link"
+          },
+          "parent_item_uuid": {
+            "type": "string",
+            "description": "Appetize-Assigned unique identifier link to another item in this cart within this transaction, used with modifiers",
+            "format": "uuid",
+            "example": "f7c12fe4-c69a-4b78-8962-b8439ad91af1"
+          },
+          "discounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/discount_application"
+            }
+          },
+          "measure": {
+            "$ref": "#/components/schemas/item_sale_measure"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/item_sale_prices"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity of the item returned",
+            "format": "float",
+            "example": 2
+          }
+        }
+      },
+      "key_value_pair": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "local_order_uuid": {
+        "type": "string",
+        "description": "Appetize-generated UUID which uniquely identifies the order.",
+        "format": "uuid"
+      },
+      "location": {
+        "required": [
+          "vendor_id",
+          "vendor_name",
+          "venue_id",
+          "venue_name"
+        ],
+        "type": "object",
+        "properties": {
+          "external_vendor_id": {
+            "maxLength": 255,
+            "type": "string",
+            "description": "Connect-configured External Vendor ID",
+            "nullable": true,
+            "example": "SFSDC495"
+          },
+          "venue_id": {
+            "$ref": "#/components/schemas/venue_id"
+          },
+          "venue_name": {
+            "maxLength": 255,
+            "type": "string",
+            "description": "Connect-configured venue name",
+            "example": "Big Island Burger"
+          },
+          "vendor_id": {
+            "$ref": "#/components/schemas/vendor_id"
+          },
+          "vendor_name": {
+            "maxLength": 255,
+            "type": "string",
+            "description": "Connect-configured vendor name",
+            "example": "Front Counter"
+          },
+          "terminal_id": {
+            "type": "string",
+            "description": "Customer-assigned terminal identifier originating the request",
+            "example": "SG4903"
+          }
+        },
+        "description": "Identifiers for the location originating the current request"
+      },
+      "media": {
+        "maxLength": 255,
+        "minLength": 1,
+        "type": "string",
+        "description": "A unique identifier for the guest",
+        "example": "3USEFXGO93K3RNG6R55EJXK9BJA8R7"
+      },
+      "media_input_method": {
+        "type": "string",
+        "description": "The input method used for the media",
+        "example": "SCANNER",
+        "enum": [
+          "MANUAL",
+          "SCANNER",
+          "EXTERNAL",
+          "LOOKUP"
+        ]
+      },
+      "pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "minimum": 1,
+            "type": "integer",
+            "description": "The page number of the current result set, starting with 1.  Even if no results are found, an empty page will be returned.",
+            "example": 1
+          },
+          "per_page": {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer",
+            "description": "The number of results per individual page in this request.  If the requested per_page query parameter exceeds the maximum, the per_page will be reduced to the supported maximum in the request.",
+            "example": 1
+          },
+          "total_pages": {
+            "minimum": 1,
+            "type": "integer",
+            "description": "The total number of pages that contain the entire requested result set.",
+            "example": 1
+          },
+          "total_results": {
+            "minimum": 0,
+            "type": "integer",
+            "description": "The total number of results available for the given query.",
+            "example": 1
+          }
+        }
+      },
+      "reduction": {
+        "required": [
+          "display_balance",
+          "identifier_type"
+        ],
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/reduction_id"
+              },
+              {
+                "$ref": "#/components/schemas/reduction_reference_id"
+              }
+            ]
+          },
+          "identifier_type": {
+            "$ref": "#/components/schemas/reduction_identifier_type"
+          },
+          "display_name": {
+            "$ref": "#/components/schemas/reduction_display_name"
+          },
+          "additional_text": {
+            "$ref": "#/components/schemas/reduction_additional_text"
+          },
+          "additional_text_decoration": {
+            "$ref": "#/components/schemas/reduction_additional_text_decoration"
+          },
+          "display_balance": {
+            "$ref": "#/components/schemas/reduction_display_balance"
+          },
+          "prompt_for_usage": {
+            "$ref": "#/components/schemas/reduction_prompt_for_usage"
+          },
+          "promotion_usage_limit": {
+            "$ref": "#/components/schemas/reduction_promotion_usage_limit"
+          }
+        }
+      },
+      "reduction_activation_time": {
+        "type": "string",
+        "description": "The date/time of when the discount is active (local)",
+        "format": "dateTime"
+      },
+      "reduction_details": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "type": "string",
+        "description": "Details about the discount, such as exclusions, limitations, sponsorship, etc."
+      },
+      "reduction_display_name": {
+        "maxLength": 30,
+        "minLength": 1,
+        "type": "string",
+        "description": "Name displayed on the receipt and on-screen when the discount is applied"
+      },
+      "reduction_expiration_time": {
+        "type": "string",
+        "description": "The date/time of when the discount will no longer be active (local)",
+        "format": "dateTime"
+      },
+      "reduction_additional_text": {
+        "maxLength": 30,
+        "minLength": 0,
+        "type": "string",
+        "description": "Text to display on the selling system which may provide additional context to the discount"
+      },
+      "reduction_additional_text_decoration": {
+        "type": "boolean",
+        "description": "If true, additional text receives additional UI decoration",
+        "default": false
+      },
+      "reduction_display_balance": {
+        "maxLength": 16,
+        "minLength": 1,
+        "type": "string",
+        "description": "Balance shown on the selling system including any prefixes and suffixes"
+      },
+      "reduction_id": {
+        "minimum": 1,
+        "type": "integer",
+        "description": "Appetize-assigned ID for the discount",
+        "format": "int64",
+        "readOnly": true
+      },
+      "reduction_identifier_type": {
+        "type": "string",
+        "description": "The `DISCOUNT_ID` refers to the Appetize-generated ID.  The `REFERENCE` refers to the Reference ID field configured on the given discount.",
+        "enum": [
+          "DISCOUNT_ID",
+          "REFERENCE"
+        ]
+      },
+      "reduction_name": {
+        "maxLength": 100,
+        "minLength": 1,
+        "type": "string",
+        "description": "Internal name used to refer to the discount"
+      },
+      "reduction_promotion_usage_limit": {
+        "maximum": 9999,
+        "minimum": 0,
+        "type": "integer",
+        "description": "Override of the Connect-configured value; The number of times a given promotion will be applied to the order for each instance of a media.  A value of `0` indicates no reward triggering is allowed."
+      },
+      "reduction_prompt_for_usage": {
+        "type": "boolean",
+        "description": "If true, the selling system will not apply this discount unless it is manually selected",
+        "default": false
+      },
+      "reduction_reference_id": {
+        "maxLength": 16,
+        "minLength": 1,
+        "type": "string",
+        "description": "Customer-configured unique identifier for the discount"
+      },
+      "reduction_reference_tag": {
+        "maxLength": 24,
+        "minLength": 1,
+        "type": "string",
+        "description": "Reference tag which can be used to trigger a discount"
+      },
+      "reduction_status": {
+        "type": "string",
+        "description": "Status of the discount's lifecycle",
+        "enum": [
+          "Active",
+          "Pending",
+          "Expired",
+          "Deactivated"
+        ]
+      },
+      "reference_tag": {
+        "maxLength": 24,
+        "minLength": 1,
+        "type": "string",
+        "description": "Reference tag which can be used to trigger a discount"
+      },
+      "vendor_id": {
+        "type": "integer",
+        "description": "Connect-assigned vendor ID",
+        "readOnly": true,
+        "example": 757
+      },
+      "venue_id": {
+        "type": "integer",
+        "description": "Connect-assigned venue ID",
+        "readOnly": true,
+        "example": 48
+      },
+      "getDiscountsResponse_discounts": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Connect-assigned unique identifier",
+            "readOnly": true
+          },
+          "name": {
+            "$ref": "#/components/schemas/reduction_name"
+          },
+          "display_name": {
+            "$ref": "#/components/schemas/reduction_display_name"
+          },
+          "details": {
+            "$ref": "#/components/schemas/reduction_details"
+          },
+          "reference_id": {
+            "$ref": "#/components/schemas/reduction_reference_id"
+          },
+          "reference_tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/reference_tag"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/reduction_status"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/reduction_activation_time"
+          },
+          "expiration": {
+            "$ref": "#/components/schemas/reduction_expiration_time"
+          },
+          "vendor_assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/vendor_id"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination"
+          }
+        }
+      },
+      "inquiryResponse_discounts": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "$ref": "#/components/schemas/reduction_display_name"
+          },
+          "additional_text": {
+            "$ref": "#/components/schemas/reduction_additional_text"
+          },
+          "additional_text_decoration": {
+            "$ref": "#/components/schemas/reduction_additional_text_decoration"
+          },
+          "display_balance": {
+            "$ref": "#/components/schemas/reduction_display_balance"
+          }
+        }
+      },
+      "item_sale_identifiers": {
+        "type": "object",
+        "properties": {
+          "barcode": {
+            "type": "string",
+            "description": "The barcode used to add the item to the cart, if any, scanned or manually entered"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Connect-configured item display name",
+            "example": "Signature Deluxe Cheeseburger"
+          },
+          "external_id": {
+            "type": "string",
+            "description": "Connect-configured item External ID",
+            "example": "AA749f04948"
+          },
+          "id": {
+            "type": "integer",
+            "description": "Connect-assigned unique item identifier",
+            "example": 47391
+          },
+          "name": {
+            "type": "string",
+            "description": "Connect-configured item name",
+            "example": "Cheeseburger"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Connect-configured item SKU",
+            "example": "5834b8503840"
+          }
+        }
+      },
+      "item_sale_measure": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": "string",
+            "enum": [
+              "KILOGRAM",
+              "GRAM",
+              "POUND",
+              "OUNCE",
+              "EACH"
+            ]
+          }
+        }
+      },
+      "item_sale_prices": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "type": "number",
+            "description": "The per-item price configured in Connect",
+            "format": "float",
+            "example": 12
+          },
+          "refund": {
+            "type": "number",
+            "description": "The refund value of the item. This could include any adjustments distributed over the eligible items",
+            "format": "float",
+            "example": 9.95
+          },
+          "sold": {
+            "type": "number",
+            "description": "The per-item adjusted price net of all discounts and fees",
+            "format": "float",
+            "example": 11
+          }
+        }
+      },
+      "item_return_link": {
+        "type": "object",
+        "properties": {
+          "line_item_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "ae76b6c4-6c35-42a5-93f9-ea6d60c642de"
+          },
+          "local_order_id": {
+            "type": "string",
+            "example": "A9991999920063009000001"
+          },
+          "local_order_uuid": {
+            "type": "string",
+            "format": "uuid",
+            "example": "76186c78-d126-4d1d-a910-45a8cfd010bb"
+          }
+        },
+        "description": "Used for return/refund and adjustments, identifies the original transaction details"
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Success"
+      },
+      "Unauthorized": {
+        "description": "User is not logged in or otherwise has not supplied valid credentials",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/failureResponse"
+            },
+            "example": {
+              "message": "unauthorized"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "A value supplied in the payload does not conform to the expected type, is unpermitted, or otherwise not able to be used.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/failureResponse"
+            }
+          }
+        }
+      },
+      "BadContent": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/failureResponse"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "An error occurred within the service unrelated to the request content.  It may contain more in-depth error information",
+        "headers": {
+          "Content-Language": {
+            "$ref": "#/components/headers/Content-Language"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/failureResponse"
+            },
+            "examples": {
+              "Internal Error": {
+                "value": {
+                  "message": "An internal server error has occurred"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "Page": {
+        "name": "filters.pagination.page",
+        "in": "query",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer",
+          "default": 1
+        },
+        "example": 1
+      },
+      "PerPage": {
+        "name": "filters.pagination.per_page",
+        "in": "query",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "maximum": 500,
+          "minimum": 1,
+          "type": "integer",
+          "default": 10
+        },
+        "example": 10
+      },
+      "reference_tagFilter": {
+        "name": "filters.reference_tag",
+        "in": "query",
+        "description": "Reference tag associated to the discount",
+        "required": false,
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "$ref": "#/components/schemas/reference_tag"
+        }
+      },
+      "AcceptLanguage": {
+        "name": "Accept-Language",
+        "in": "header",
+        "description": "Reserved for future use.  Langauge(s) accepted by the caller.",
+        "required": true,
+        "deprecated": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "en-US"
+      },
+      "vendor_id": {
+        "name": "x-request-vendor-id",
+        "in": "header",
+        "description": "Vendor ID for a given vendor",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "venue_id": {
+        "name": "x-request-venue-id",
+        "in": "header",
+        "description": "Venue ID for a given venue",
+        "required": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "examples": {
+      "inquiryResponse_single": {
+        "description": "Illustrates an account which has multiple discounts available, includuing ones which would not be displayed or selectable during an authorizeReponse",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "display_name": "Unlimited Beverage Plan",
+              "additional_text": "Expires Tomorrow",
+              "additional_text_decoration": true,
+              "display_balance": "Unlimited"
+            }
+          ]
+        }
+      },
+      "inquiryResponse_multiple": {
+        "description": "Illustrates an account which has multiple discounts available, includuing ones which would not be displayed or selectable during an authorizeReponse",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "display_name": "Unlimited Beverage Plan",
+              "additional_text": "Expires Tomorrow",
+              "additional_text_decoration": true,
+              "display_balance": "Unlimited"
+            },
+            {
+              "display_name": "Daily Snack Plan",
+              "display_balance": "4 Snacks"
+            },
+            {
+              "display_name": "Employee Discount - Food",
+              "additional_text": "Vaid for employee only; No other discounts will apply.",
+              "display_balance": "20%"
+            },
+            {
+              "display_name": "Employee Discount - Merchandise",
+              "display_balance": "35%"
+            }
+          ]
+        }
+      },
+      "inquiryResponse_empty": {
+        "description": "Illustrates an account which has multiple discounts available, includuing ones which would not be displayed or selectable during an authorizeReponse",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": []
+        }
+      },
+      "authorizeResponse_Approved": {
+        "description": "Illustrates multiple discounts with mixed types (DISCOUNT_ID/REFERENCE), promotion and application usage limits (2021Dine_Snack23), informational discounts which cannot be executed (2021Dine_Meal7); Reference tags; Stored Value.",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "identifier": 5749,
+              "identifier_type": "DISCOUNT_ID"
+            },
+            {
+              "identifier": "2021Dine_Snack23",
+              "identifier_type": "REFERENCE",
+              "display_name": "Daily Snack Plan",
+              "display_balance": "4 Snacks",
+              "prompt_for_usage": true,
+              "promotion_usage_limit": 1
+            },
+            {
+              "identifier": "2021Dine_Meal7",
+              "identifier_type": "REFERENCE",
+              "display_name": "Meal Every Hour",
+              "additional_text": "Next Meal Available in 12 Minutes (14:55)",
+              "promotion_usage_limit": 0,
+              "prompt_for_usage": true
+            }
+          ],
+          "reference_tags": [
+            "SILVER",
+            "PREMIUM_PARKING21",
+            "EMPLOYEE_FOOD_20"
+          ]
+        }
+      },
+      "authorizeResponse_NoPrompts": {
+        "description": "A single discount which will automatically be triggered and the cashier will not be prompted for input or selection",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "identifier": 5749,
+              "identifier_type": "DISCOUNT_ID"
+            }
+          ],
+          "reference_tags": [
+            "SILVER",
+            "PREMIUM_PARKING21",
+            "EMPLOYEE_FOOD_20"
+          ]
+        }
+      },
+      "authorizeResponse_NoUses": {
+        "description": "Guest has no uses available right now, but the external system wants to inform the cashier why the discount cannot be selected",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "identifier": "2021Dine_Meal7",
+              "identifier_type": "REFERENCE",
+              "display_name": "Meal Every Hour",
+              "additional_text": "Next Meal Available in 12 Minutes (14:55)",
+              "promotion_usage_limit": 0,
+              "prompt_for_usage": true
+            }
+          ],
+          "reference_tags": [
+            "SILVER",
+            "PREMIUM_PARKING21",
+            "EMPLOYEE_FOOD_20"
+          ]
+        }
+      },
+      "authorizeResponse_OneTimeUse": {
+        "description": "Guest has a one-time use 20% coupon that can optionally be applied",
+        "value": {
+          "display_media": "Julio MP ***9876",
+          "discounts": [
+            {
+              "identifier": "20PCTPremium",
+              "identifier_type": "REFERENCE",
+              "display_name": "20% Passholder One-Time Discount",
+              "promotion_usage_limit": 1,
+              "prompt_for_usage": true
+            }
+          ],
+          "reference_tags": [
+            "SILVER",
+            "PREMIUM_PARKING21",
+            "EMPLOYEE_FOOD_20"
+          ]
+        }
+      },
+      "authorizeResponse_NotFound": {
+        "value": {
+          "message": "Account not found"
+        }
+      },
+      "authorizeResponse_Expired": {
+        "value": {
+          "message": "Pass expired or revoked"
+        }
+      },
+      "authorizeResponse_Locked": {
+        "value": {
+          "message": "Account locked; In use at Seaside Grill terminal 4"
+        }
+      },
+      "finalizeRequest": {
+        "description": "Transaction with multiple parent items and modifiers.  Burgers were priced incorrectly at $12.00, cashier override to $11.00, and a 10% cart-level discount applied prior to the dine plan.  Two different passes were presented.",
+        "value": {
+          "items": [
+            {
+              "identifiers": {
+                "display_name": "Signature Deluxe Cheeseburger",
+                "external_id": 48430393,
+                "id": 440,
+                "name": "SIGBURG"
+              },
+              "index": 0,
+              "line_item_uuid": "a0d33d00-fb67-4a3d-8adb-d604a6cba213",
+              "discounts": [
+                {
+                  "amount": -0.11,
+                  "base_price": 11,
+                  "index": 1,
+                  "name": "2021 Meal Plan",
+                  "reference": "2021Dine_Meal7",
+                  "media": "HOCVORI16LKDGGOBZUV6DS966Y118F",
+                  "type": "PERCENT",
+                  "value": 100
+                },
+                {
+                  "amount": -10.89,
+                  "base_price": 10.89,
+                  "index": 1,
+                  "name": "2021 Meal Plan",
+                  "reference": "2021Dine_Meal7",
+                  "media": "HOCVORI16LKDGGOBZUV6DS966Y118F",
+                  "type": "PERCENT",
+                  "value": 100
+                }
+              ],
+              "measure": "EACH",
+              "prices": {
+                "original": 12,
+                "refund": 10.9,
+                "sold": 0
+              },
+              "quantity": 2
+            },
+            {
+              "identifiers": {
+                "display_name": "Extra Mayonaise",
+                "external_id": 3330029,
+                "id": 104493,
+                "name": "X-Mayo"
+              },
+              "index": 1,
+              "line_item_uuid": "788d0496-53e5-4e58-9501-8db5a91c0207",
+              "parent_item_uuid": "a0d33d00-fb67-4a3d-8adb-d604a6cba213",
+              "measure": "EACH",
+              "quantity": 2,
+              "prices": {
+                "original": 0,
+                "refund": 0,
+                "sold": 0
+              }
+            },
+            {
+              "identifiers": {
+                "display_name": "No Pickles",
+                "external_id": 9303901,
+                "id": 11345,
+                "name": "NO PICK"
+              },
+              "index": 2,
+              "line_item_uuid": "d114410e-09d3-40c2-a1bf-295d27b8948b",
+              "parent_item_uuid": "a0d33d00-fb67-4a3d-8adb-d604a6cba213",
+              "measure": "EACH",
+              "quantity": 0,
+              "prices": {
+                "original": 0,
+                "refund": 0,
+                "sold": 0
+              }
+            },
+            {
+              "identifiers": {
+                "display_name": "Taffy by the Pound",
+                "external_id": 330394059,
+                "id": 22345,
+                "name": "BULK TAFFY"
+              },
+              "index": 3,
+              "line_item_uuid": "d114410e-09d3-40c2-a1bf-295d27b8948b",
+              "discounts": [
+                {
+                  "amount": -1.5,
+                  "base_price": 9.99,
+                  "index": 0,
+                  "name": "10% Silver Pass Discount",
+                  "reference": "2021_10PCTSilver",
+                  "media": "3USEFXGO93K3RNG6R55EJXK9BJA8R7",
+                  "type": "PERCENT",
+                  "value": 10
+                }
+              ],
+              "measure": "POUND",
+              "quantity": 1.5,
+              "prices": {
+                "original": 9.99,
+                "refund": 9,
+                "sold": 9
+              }
+            }
+          ],
+          "location": {
+            "external_vendor_id": "SFSDC495",
+            "venue_name": "Big Island Burger",
+            "vendor_name": "Front Counter",
+            "terminal_id": "SG4903"
+          },
+          "employee": {
+            "login": 45958,
+            "external_id": "SAP4945883"
+          },
+          "local_order_uuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        }
+      },
+      "finalizeResponse_AuthorizationTimeout": {
+        "value": {
+          "message": "Authorization timed out.  Remove all payments and media, then try again."
+        }
+      },
+      "finalizeResponse_InsufficientBalance": {
+        "value": {
+          "message": "Insufficient balance of one or more programs.  Remove all payments and media, then try again."
+        }
+      },
+      "UndefinedError": {
+        "value": {
+          "message": "An undefined error has occurred"
+        }
+      },
+      "InvalidRequestBody": {
+        "value": {
+          "message": "Request body was invalid"
+        }
+      }
+    },
+    "headers": {
+      "Content-Language": {
+        "description": "Reserved for future use.  Langauge used for the given request.",
+        "deprecated": true,
+        "style": "simple",
+        "explode": false,
+        "schema": {
+          "type": "string"
+        },
+        "example": "en-US"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
